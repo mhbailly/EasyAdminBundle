@@ -2,15 +2,18 @@
 
 namespace EasyCorp\Bundle\EasyAdminBundle\Tests\Filter;
 
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
+use Doctrine\ORM\Tools\Setup;
+use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\FieldDto;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\FilterDataDto;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Form\Type\ComparisonType;
 use PHPUnit\Framework\TestCase;
-use Symfony\Bridge\Doctrine\Test\DoctrineTestHelper;
 
 class ChoiceFilterTest extends TestCase
 {
@@ -18,10 +21,6 @@ class ChoiceFilterTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!class_exists(DoctrineTestHelper::class)) {
-            self::markTestSkipped('Doctrine test helper is required to run ChoiceFilter tests.');
-        }
-
         $metadata = new ClassMetadata(self::class);
         $metadata->setIdentifier(['id']);
 
@@ -30,7 +29,7 @@ class ChoiceFilterTest extends TestCase
 
     public function testContainsOneOfWithJsonStorage(): void
     {
-        $queryBuilder = $this->createQueryBuilder();
+        $queryBuilder = $this->createConfiguredQueryBuilder();
         $filter = ChoiceFilter::new('foo')->canSelectMultiple();
         $filterData = FilterDataDto::new(
             0,
@@ -39,7 +38,7 @@ class ChoiceFilterTest extends TestCase
             [
                 'comparison' => ComparisonType::CONTAINS,
                 'value' => ['red', 'green'],
-            ]
+            ],
         );
         $fieldDto = $this->createFieldDto('foo', 'json');
 
@@ -54,7 +53,7 @@ class ChoiceFilterTest extends TestCase
 
     public function testContainsAllWithSimpleArrayStorage(): void
     {
-        $queryBuilder = $this->createQueryBuilder();
+        $queryBuilder = $this->createConfiguredQueryBuilder();
         $filter = ChoiceFilter::new('foo')->canSelectMultiple();
         $filterData = FilterDataDto::new(
             0,
@@ -63,7 +62,7 @@ class ChoiceFilterTest extends TestCase
             [
                 'comparison' => ComparisonType::CONTAINS_ALL,
                 'value' => ['north', 'south'],
-            ]
+            ],
         );
         $fieldDto = $this->createFieldDto('foo', 'simple_array');
 
@@ -78,7 +77,7 @@ class ChoiceFilterTest extends TestCase
 
     public function testDoesNotContainAnyWithJsonStorage(): void
     {
-        $queryBuilder = $this->createQueryBuilder();
+        $queryBuilder = $this->createConfiguredQueryBuilder();
         $filter = ChoiceFilter::new('foo')->canSelectMultiple();
         $filterData = FilterDataDto::new(
             0,
@@ -87,7 +86,7 @@ class ChoiceFilterTest extends TestCase
             [
                 'comparison' => ComparisonType::NOT_CONTAINS,
                 'value' => ['silver', 'gold'],
-            ]
+            ],
         );
         $fieldDto = $this->createFieldDto('foo', 'json');
 
@@ -102,7 +101,7 @@ class ChoiceFilterTest extends TestCase
 
     public function testContainsOneOfWithScalarStorageFallsBackToInComparison(): void
     {
-        $queryBuilder = $this->createQueryBuilder();
+        $queryBuilder = $this->createConfiguredQueryBuilder();
         $filter = ChoiceFilter::new('foo')->canSelectMultiple();
         $filterData = FilterDataDto::new(
             0,
@@ -111,7 +110,7 @@ class ChoiceFilterTest extends TestCase
             [
                 'comparison' => ComparisonType::CONTAINS,
                 'value' => ['east'],
-            ]
+            ],
         );
 
         $filter->apply($queryBuilder, $filterData, null, $this->entityDto);
@@ -122,13 +121,27 @@ class ChoiceFilterTest extends TestCase
         self::assertSame(['east'], $parameters[0]->getValue());
     }
 
-    private function createQueryBuilder(): QueryBuilder
+    private function createConfiguredQueryBuilder(): QueryBuilder
     {
-        $entityManager = DoctrineTestHelper::createTestEntityManager();
+        $entityManager = $this->createEntityManager();
         $queryBuilder = new QueryBuilder($entityManager);
         $queryBuilder->select('o')->from('Object', 'o');
 
         return $queryBuilder;
+    }
+
+    private function createEntityManager(): EntityManagerInterface
+    {
+        $configuration = Setup::createConfiguration(true);
+        $configuration->setMetadataDriverImpl(new MappingDriverChain());
+
+        return EntityManager::create(
+            [
+                'driver' => 'pdo_sqlite',
+                'memory' => true,
+            ],
+            $configuration,
+        );
     }
 
     private function createFieldDto(string $propertyName, string $doctrineType): FieldDto
