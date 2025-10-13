@@ -18,6 +18,10 @@ class ChoiceFilterTest extends TestCase
 
     protected function setUp(): void
     {
+        if (!class_exists(DoctrineTestHelper::class)) {
+            self::markTestSkipped('Doctrine test helper is required to run ChoiceFilter tests.');
+        }
+
         $metadata = new ClassMetadata(self::class);
         $metadata->setIdentifier(['id']);
 

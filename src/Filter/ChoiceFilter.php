@@ -243,6 +243,6 @@ final class ChoiceFilter implements FilterInterface
             return false;
         }
 
-        return strtolower($type) === 'simple_array';
+        return 'simple_array' === strtolower($type);
     }
 }
