@@ -84,6 +84,8 @@ return [
         'label.is_less_than_or_equal_to' => 'kurang dari atau sama dengan',
         'label.is_between' => 'antara',
         'label.contains' => 'mengandung',
+        'label.contains_one_of' => 'contains one of',
+        'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'mengandung semua',
         'label.not_contains' => 'tidak mengandung',
         'label.starts_with' => 'dimulai dari',

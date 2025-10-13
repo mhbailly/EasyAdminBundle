@@ -84,6 +84,8 @@ return [
         'label.is_less_than_or_equal_to' => 'is minder dan of gelijk aan',
         'label.is_between' => 'ligt tussen',
         'label.contains' => 'bevat',
+        'label.contains_one_of' => 'contains one of',
+        'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'bevat alles',
         'label.not_contains' => 'bevat niet',
         'label.starts_with' => 'start met',

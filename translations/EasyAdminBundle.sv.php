@@ -84,6 +84,8 @@ return [
         // 'label.is_less_than_or_equal_to' => '',
         // 'label.is_between' => '',
         // 'label.contains' => '',
+        // 'label.contains_one_of' => '',
+        // 'label.does_not_contain_any_of' => '',
         // 'label.contains_all' => '',
         // 'label.not_contains' => '',
         // 'label.starts_with' => '',

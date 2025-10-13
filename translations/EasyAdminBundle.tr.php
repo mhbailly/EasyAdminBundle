@@ -84,6 +84,8 @@ return [
         'label.is_less_than_or_equal_to' => 'Küçüktür veya eşittir',
         'label.is_between' => 'arasında',
         'label.contains' => 'Metin şunları içeriyor',
+        'label.contains_one_of' => 'contains one of',
+        'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'Metin bunların hepsini içeriyor',
         'label.not_contains' => 'Metin şunları içermiyor',
         'label.starts_with' => 'Metin şununla başlıyor',

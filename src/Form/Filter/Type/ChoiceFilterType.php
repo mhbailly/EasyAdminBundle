@@ -46,6 +46,40 @@ class ChoiceFilterType extends AbstractType
                             $data['comparison'] = $multiple ? 'NOT IN' : '!=';
                         }
                         break;
+                    case ComparisonType::CONTAINS_ALL:
+                        if (null === $data['value'] || ($multiple && 0 === \count($data['value']))) {
+                            $data['comparison'] = 'IS NULL';
+                            $data['value'] = $multiple ? [] : null;
+                        } else {
+                            if ($multiple) {
+                                $data['value'] = array_values((array) $data['value']);
+                            }
+
+                            $data['comparison'] = ComparisonType::CONTAINS_ALL;
+                        }
+                        break;
+                    case ComparisonType::CONTAINS:
+                        if (null === $data['value'] || ($multiple && 0 === \count($data['value']))) {
+                            $data['comparison'] = 'IS NULL';
+                            $data['value'] = $multiple ? [] : null;
+                        } else {
+                            if ($multiple) {
+                                $data['value'] = array_values((array) $data['value']);
+                            }
+                            $data['comparison'] = ComparisonType::CONTAINS;
+                        }
+                        break;
+                    case ComparisonType::NOT_CONTAINS:
+                        if (null === $data['value'] || ($multiple && 0 === \count($data['value']))) {
+                            $data['comparison'] = 'IS NOT NULL';
+                            $data['value'] = $multiple ? [] : null;
+                        } else {
+                            if ($multiple) {
+                                $data['value'] = array_values((array) $data['value']);
+                            }
+                            $data['comparison'] = ComparisonType::NOT_CONTAINS;
+                        }
+                        break;
                 }
 
                 return $data;
@@ -68,6 +102,22 @@ class ChoiceFilterType extends AbstractType
         $resolver->setNormalizer('value_type_options', static function (Options $options, $value) {
             if (!isset($value['attr'])) {
                 $value['attr']['data-ea-widget'] = 'ea-autocomplete';
+            }
+
+            return $value;
+        });
+        $resolver->setNormalizer('comparison_type_options', static function (Options $options, $value) {
+            $value['type'] ??= 'choice';
+
+            $isMultiple = (bool) ($options['value_type_options']['multiple'] ?? false);
+            if ($isMultiple && !isset($value['choices'])) {
+                $value['choices'] = [
+                    'filter.label.is_same' => ComparisonType::EQ,
+                    'filter.label.is_not_same' => ComparisonType::NEQ,
+                    'filter.label.contains_one_of' => ComparisonType::CONTAINS,
+                    'filter.label.contains_all' => ComparisonType::CONTAINS_ALL,
+                    'filter.label.does_not_contain_any_of' => ComparisonType::NOT_CONTAINS,
+                ];
             }
 
             return $value;

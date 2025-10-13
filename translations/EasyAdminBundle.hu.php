@@ -84,6 +84,8 @@ return [
         'label.is_less_than_or_equal_to' => 'kisebb vagy egyenlő',
         'label.is_between' => 'kettő között',
         'label.contains' => 'tartalmazza',
+        'label.contains_one_of' => 'contains one of',
+        'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'tartalmaz mindent',
         'label.not_contains' => 'nem tartalmazza',
         'label.starts_with' => 'így kezdődik',

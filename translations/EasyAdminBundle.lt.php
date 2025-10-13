@@ -84,6 +84,8 @@ return [
         'label.is_less_than_or_equal_to' => 'mažesnis arba lygus',
         'label.is_between' => 'tarp',
         'label.contains' => 'turi',
+        'label.contains_one_of' => 'contains one of',
+        'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'turi visus',
         'label.not_contains' => 'neturi',
         'label.starts_with' => 'prasideda',

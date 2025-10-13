@@ -131,5 +131,48 @@ class ChoiceFilterTypeTest extends FilterTypeTest
             'SELECT o FROM Object o WHERE o.foo NOT IN (:foo_1)',
             [new Parameter('foo_1', ['b', 'c'], Connection::PARAM_STR_ARRAY)],
         ];
+
+        yield [
+            ['comparison' => ComparisonType::CONTAINS, 'value' => ['a', 'c']],
+            ['comparison' => ComparisonType::CONTAINS, 'value' => ['a', 'c']],
+            [
+                'value_type_options' => [
+                    'multiple' => true,
+                    'choices' => ['a', 'b', 'c'],
+                ],
+            ],
+            'SELECT o FROM Object o WHERE o.foo IN (:foo_1)',
+            [new Parameter('foo_1', ['a', 'c'], Connection::PARAM_STR_ARRAY)],
+        ];
+
+        yield [
+            ['comparison' => ComparisonType::NOT_CONTAINS, 'value' => ['a']],
+            ['comparison' => ComparisonType::NOT_CONTAINS, 'value' => ['a']],
+            [
+                'value_type_options' => [
+                    'multiple' => true,
+                    'choices' => ['a', 'b', 'c'],
+                ],
+            ],
+            'SELECT o FROM Object o WHERE o.foo NOT IN (:foo_1) OR o.foo IS NULL',
+            [new Parameter('foo_1', ['a'], Connection::PARAM_STR_ARRAY)],
+        ];
+    }
+
+    public function testMultipleSelectionProvidesArrayComparisons(): void
+    {
+        $form = $this->factory->create(ChoiceFilterType::class, null, [
+            'value_type_options' => [
+                'multiple' => true,
+                'choices' => ['a', 'b'],
+            ],
+        ]);
+
+        $choices = $form->get('comparison')->getConfig()->getOption('choices');
+
+        $this->assertArrayHasKey('filter.label.contains_one_of', $choices);
+        $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
+        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
+        $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
     }
 }

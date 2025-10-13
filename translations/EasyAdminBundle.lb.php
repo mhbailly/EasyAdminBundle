@@ -84,6 +84,8 @@ return [
         'label.is_less_than_or_equal_to' => 'ass méi kleng wéi oder gläich',
         'label.is_between' => 'ass tëscht',
         'label.contains' => 'enthält',
+        'label.contains_one_of' => 'contains one of',
+        'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'enthält alles',
         'label.not_contains' => 'enthält net',
         'label.starts_with' => 'fänkt u mat',
