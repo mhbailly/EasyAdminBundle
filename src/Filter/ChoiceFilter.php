@@ -129,6 +129,9 @@ final class ChoiceFilter implements FilterInterface
             ->setParameter($parameterName, $value);
     }
 
+    /**
+     * @param array<mixed> $allChoices
+     */
     private function applyForArrayStorage(QueryBuilder $queryBuilder, string $alias, string $property, string $comparison, string $parameterName, mixed $value, bool $wrapWithQuotes, array $allChoices): void
     {
         if ($value instanceof \Traversable) {
@@ -336,7 +339,7 @@ final class ChoiceFilter implements FilterInterface
     }
 
     /**
-     * @internal The Doctrine metadata of the FieldDto is not always populated; fall back to entity metadata when possible.
+     * @internal the Doctrine metadata of the FieldDto is not always populated; fall back to entity metadata when possible
      */
     private function storesArrayValues(?FieldDto $fieldDto, EntityDto $entityDto, string $property): bool
     {
@@ -405,6 +408,6 @@ final class ChoiceFilter implements FilterInterface
             $values[] = $choice;
         }
 
-        return array_values(array_unique($values, SORT_REGULAR));
+        return array_values(array_unique($values, \SORT_REGULAR));
     }
 }

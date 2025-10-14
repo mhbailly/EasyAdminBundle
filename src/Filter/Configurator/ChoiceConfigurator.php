@@ -7,8 +7,9 @@ use EasyCorp\Bundle\EasyAdminBundle\Contracts\Filter\FilterConfiguratorInterface
 use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\FieldDto;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\FilterDto;
-use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
+
 
 /**
  * @author Javier Eguiluz <javier.eguiluz@gmail.com>
