@@ -180,7 +180,7 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('%"alpha"%', $parameters[0]->getValue());
     }
 
-    public function testContainsExactlyMatchesOnlySelectedValues(): void
+    public function testMatchesExactlyIncludesOnlySelectedValues(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
         $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
@@ -237,7 +237,7 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('%green%', $parameters[1]->getValue());
     }
 
-    public function testDoesNotContainExactlyExcludesExactMatches(): void
+    public function testDoesNotMatchExactlyExcludesExactMatches(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
         $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([

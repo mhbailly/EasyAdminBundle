@@ -190,6 +190,7 @@ class ChoiceFilterType extends AbstractType
         if ($fieldStoresMultiple) {
             return [
                 'filter.label.contains' => ComparisonType::CONTAINS,
+                'filter.label.matches_exactly' => ComparisonType::MATCHES_EXACTLY,
                 'filter.label.not_contains' => ComparisonType::NOT_CONTAINS,
                 'filter.label.does_not_match_exactly' => ComparisonType::NOT_MATCHES_EXACTLY,
             ];
@@ -231,12 +232,8 @@ class ChoiceFilterType extends AbstractType
 
         if (!$filterIsMultiple && $fieldStoresMultiple) {
             return match ($comparison) {
-                ComparisonType::EQ,
-                ComparisonType::CONTAINS_ALL,
-                ComparisonType::MATCHES_EXACTLY => ComparisonType::CONTAINS,
-                ComparisonType::NEQ,
-                ComparisonType::NOT_CONTAINS_ALL,
-                ComparisonType::NOT_MATCHES_EXACTLY => ComparisonType::NOT_CONTAINS,
+                ComparisonType::EQ => ComparisonType::CONTAINS,
+                ComparisonType::NEQ => ComparisonType::NOT_CONTAINS,
                 default => $comparison,
             };
         }
