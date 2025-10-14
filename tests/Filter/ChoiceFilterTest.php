@@ -23,6 +23,16 @@ class ChoiceFilterTest extends TestCase
     {
         $metadata = new ClassMetadata(self::class);
         $metadata->setIdentifier(['id']);
+        $metadata->mapField([
+            'fieldName' => 'foo',
+            'columnName' => 'foo',
+            'type' => 'json',
+        ]);
+        $metadata->mapField([
+            'fieldName' => 'tags',
+            'columnName' => 'tags',
+            'type' => 'simple_array',
+        ]);
 
         $this->entityDto = new EntityDto(self::class, $metadata);
     }
@@ -128,6 +138,28 @@ class ChoiceFilterTest extends TestCase
         $queryBuilder->select('o')->from('Object', 'o');
 
         return $queryBuilder;
+    }
+
+    public function testEntityMetadataFallbackDetectsArrayStorage(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('tags')->canSelectMultiple();
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS,
+                'value' => ['alpha'],
+            ],
+        );
+
+        $filter->apply($queryBuilder, $filterData, null, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.tags LIKE :tags_0_0', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(1, $parameters);
+        self::assertSame('%"alpha"%', $parameters[0]->getValue());
     }
 
     private function createEntityManager(): EntityManagerInterface
