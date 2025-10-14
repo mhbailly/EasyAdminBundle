@@ -5,6 +5,7 @@ namespace EasyCorp\Bundle\EasyAdminBundle\Tests\Filter;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Setup;
 use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
@@ -293,7 +294,11 @@ class ChoiceFilterTest extends TestCase
 
     private function createEntityManager(): EntityManagerInterface
     {
-        $configuration = Setup::createConfiguration(true);
+        if (class_exists(ORMSetup::class)) {
+            $configuration = ORMSetup::createConfiguration(true, null);
+        } else {
+            $configuration = Setup::createConfiguration(true, null, null);
+        }
         $configuration->setMetadataDriverImpl(new MappingDriverChain());
 
         return EntityManager::create(

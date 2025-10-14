@@ -10,7 +10,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Dto\FilterDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 
-
 /**
  * @author Javier Eguiluz <javier.eguiluz@gmail.com>
  */
