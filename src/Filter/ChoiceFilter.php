@@ -112,9 +112,9 @@ final class ChoiceFilter implements FilterInterface
             $value = array_values($value);
         }
 
-        if (\in_array($comparison, [ComparisonType::CONTAINS, ComparisonType::CONTAINS_ALL, ComparisonType::CONTAINS_EXACTLY], true)) {
+        if (\in_array($comparison, [ComparisonType::CONTAINS, ComparisonType::CONTAINS_ALL, ComparisonType::MATCHES_EXACTLY], true)) {
             $comparison = \is_array($value) ? 'IN' : '=';
-        } elseif (\in_array($comparison, [ComparisonType::NOT_CONTAINS, ComparisonType::NOT_CONTAINS_ALL, ComparisonType::NOT_CONTAINS_EXACTLY], true)) {
+        } elseif (\in_array($comparison, [ComparisonType::NOT_CONTAINS, ComparisonType::NOT_CONTAINS_ALL, ComparisonType::NOT_MATCHES_EXACTLY], true)) {
             $comparison = \is_array($value) ? 'NOT IN' : '!=';
         }
 
@@ -149,7 +149,7 @@ final class ChoiceFilter implements FilterInterface
             return;
         }
 
-        if (ComparisonType::CONTAINS_EXACTLY === $comparison) {
+        if (ComparisonType::MATCHES_EXACTLY === $comparison) {
             $this->applyContainsExactlyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes, $allChoices);
 
             return;
@@ -161,7 +161,7 @@ final class ChoiceFilter implements FilterInterface
             return;
         }
 
-        if (ComparisonType::NOT_CONTAINS_EXACTLY === $comparison) {
+        if (ComparisonType::NOT_MATCHES_EXACTLY === $comparison) {
             $this->applyNotContainsExactlyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes, $allChoices);
 
             return;

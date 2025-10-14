@@ -193,7 +193,7 @@ class ChoiceFilterTest extends TestCase
             $filter->getAsDto(),
             'o',
             [
-                'comparison' => ComparisonType::CONTAINS_EXACTLY,
+                'comparison' => ComparisonType::MATCHES_EXACTLY,
                 'value' => ['red', 'green'],
             ],
         );
@@ -250,7 +250,7 @@ class ChoiceFilterTest extends TestCase
             $filter->getAsDto(),
             'o',
             [
-                'comparison' => ComparisonType::NOT_CONTAINS_EXACTLY,
+                'comparison' => ComparisonType::NOT_MATCHES_EXACTLY,
                 'value' => ['red', 'green'],
             ],
         );

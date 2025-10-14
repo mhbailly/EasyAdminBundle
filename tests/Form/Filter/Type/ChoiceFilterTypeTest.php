@@ -159,8 +159,8 @@ class ChoiceFilterTypeTest extends FilterTypeTest
         ];
 
         yield [
-            ['comparison' => ComparisonType::CONTAINS_EXACTLY, 'value' => ['a', 'b']],
-            ['comparison' => ComparisonType::CONTAINS_EXACTLY, 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::MATCHES_EXACTLY, 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::MATCHES_EXACTLY, 'value' => ['a', 'b']],
             [
                 'field_stores_multiple' => true,
                 'value_type_options' => [
@@ -194,8 +194,8 @@ class ChoiceFilterTypeTest extends FilterTypeTest
         ];
 
         yield [
-            ['comparison' => ComparisonType::NOT_CONTAINS_EXACTLY, 'value' => ['a', 'b']],
-            ['comparison' => ComparisonType::NOT_CONTAINS_EXACTLY, 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::NOT_MATCHES_EXACTLY, 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::NOT_MATCHES_EXACTLY, 'value' => ['a', 'b']],
             [
                 'field_stores_multiple' => true,
                 'value_type_options' => [
@@ -225,7 +225,7 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $this->assertArrayHasKey('filter.label.contains_any_of', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
-        $this->assertArrayNotHasKey('filter.label.contains_exactly', $choices);
+        $this->assertArrayNotHasKey('filter.label.matches_exactly', $choices);
         $this->assertArrayNotHasKey('filter.label.does_not_contain_all_of', $choices);
         $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_any_of']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
@@ -245,15 +245,15 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $this->assertArrayHasKey('filter.label.contains_any_of', $choices);
         $this->assertArrayHasKey('filter.label.contains_all', $choices);
-        $this->assertArrayHasKey('filter.label.contains_exactly', $choices);
+        $this->assertArrayHasKey('filter.label.matches_exactly', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_all_of', $choices);
-        $this->assertArrayHasKey('filter.label.does_not_contain_exactly', $choices);
+        $this->assertArrayHasKey('filter.label.does_not_match_exactly', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
         $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_any_of']);
         $this->assertSame(ComparisonType::CONTAINS_ALL, $choices['filter.label.contains_all']);
-        $this->assertSame(ComparisonType::CONTAINS_EXACTLY, $choices['filter.label.contains_exactly']);
+        $this->assertSame(ComparisonType::MATCHES_EXACTLY, $choices['filter.label.matches_exactly']);
         $this->assertSame(ComparisonType::NOT_CONTAINS_ALL, $choices['filter.label.does_not_contain_all_of']);
-        $this->assertSame(ComparisonType::NOT_CONTAINS_EXACTLY, $choices['filter.label.does_not_contain_exactly']);
+        $this->assertSame(ComparisonType::NOT_MATCHES_EXACTLY, $choices['filter.label.does_not_match_exactly']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
     }
 
@@ -271,9 +271,9 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $this->assertArrayHasKey('filter.label.contains', $choices);
         $this->assertArrayHasKey('filter.label.not_contains', $choices);
-        $this->assertArrayNotHasKey('filter.label.contains_exactly', $choices);
+        $this->assertArrayNotHasKey('filter.label.matches_exactly', $choices);
         $this->assertArrayNotHasKey('filter.label.does_not_contain_all_of', $choices);
-        $this->assertArrayNotHasKey('filter.label.does_not_contain_exactly', $choices);
+        $this->assertArrayNotHasKey('filter.label.does_not_match_exactly', $choices);
         $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.not_contains']);
     }

@@ -82,7 +82,7 @@ class ChoiceFilterType extends AbstractType
                             $data['comparison'] = ComparisonType::NOT_CONTAINS;
                         }
                         break;
-                    case ComparisonType::CONTAINS_EXACTLY:
+                    case ComparisonType::MATCHES_EXACTLY:
                         if (null === $data['value'] || ($multiple && 0 === \count($data['value']))) {
                             $data['comparison'] = 'IS NULL';
                             $data['value'] = $multiple ? [] : null;
@@ -90,7 +90,7 @@ class ChoiceFilterType extends AbstractType
                             if ($multiple) {
                                 $data['value'] = array_values((array) $data['value']);
                             }
-                            $data['comparison'] = ComparisonType::CONTAINS_EXACTLY;
+                            $data['comparison'] = ComparisonType::MATCHES_EXACTLY;
                         }
                         break;
                     case ComparisonType::NOT_CONTAINS_ALL:
@@ -104,7 +104,7 @@ class ChoiceFilterType extends AbstractType
                             $data['comparison'] = ComparisonType::NOT_CONTAINS_ALL;
                         }
                         break;
-                    case ComparisonType::NOT_CONTAINS_EXACTLY:
+                    case ComparisonType::NOT_MATCHES_EXACTLY:
                         if (null === $data['value'] || ($multiple && 0 === \count($data['value']))) {
                             $data['comparison'] = 'IS NOT NULL';
                             $data['value'] = $multiple ? [] : null;
@@ -112,7 +112,7 @@ class ChoiceFilterType extends AbstractType
                             if ($multiple) {
                                 $data['value'] = array_values((array) $data['value']);
                             }
-                            $data['comparison'] = ComparisonType::NOT_CONTAINS_EXACTLY;
+                            $data['comparison'] = ComparisonType::NOT_MATCHES_EXACTLY;
                         }
                         break;
                 }
@@ -173,9 +173,9 @@ class ChoiceFilterType extends AbstractType
             return [
                 'filter.label.contains_any_of' => ComparisonType::CONTAINS,
                 'filter.label.contains_all' => ComparisonType::CONTAINS_ALL,
-                'filter.label.contains_exactly' => ComparisonType::CONTAINS_EXACTLY,
+                'filter.label.matches_exactly' => ComparisonType::MATCHES_EXACTLY,
                 'filter.label.does_not_contain_all_of' => ComparisonType::NOT_CONTAINS_ALL,
-                'filter.label.does_not_contain_exactly' => ComparisonType::NOT_CONTAINS_EXACTLY,
+                'filter.label.does_not_match_exactly' => ComparisonType::NOT_MATCHES_EXACTLY,
                 'filter.label.does_not_contain_any_of' => ComparisonType::NOT_CONTAINS,
             ];
         }
@@ -191,7 +191,7 @@ class ChoiceFilterType extends AbstractType
             return [
                 'filter.label.contains' => ComparisonType::CONTAINS,
                 'filter.label.not_contains' => ComparisonType::NOT_CONTAINS,
-                'filter.label.does_not_contain_exactly' => ComparisonType::NOT_CONTAINS_EXACTLY,
+                'filter.label.does_not_match_exactly' => ComparisonType::NOT_MATCHES_EXACTLY,
             ];
         }
 
@@ -221,10 +221,10 @@ class ChoiceFilterType extends AbstractType
             return match ($comparison) {
                 ComparisonType::EQ,
                 ComparisonType::CONTAINS_ALL,
-                ComparisonType::CONTAINS_EXACTLY => ComparisonType::CONTAINS,
+                ComparisonType::MATCHES_EXACTLY => ComparisonType::CONTAINS,
                 ComparisonType::NEQ,
                 ComparisonType::NOT_CONTAINS_ALL,
-                ComparisonType::NOT_CONTAINS_EXACTLY => ComparisonType::NOT_CONTAINS,
+                ComparisonType::NOT_MATCHES_EXACTLY => ComparisonType::NOT_CONTAINS,
                 default => $comparison,
             };
         }
@@ -233,10 +233,10 @@ class ChoiceFilterType extends AbstractType
             return match ($comparison) {
                 ComparisonType::EQ,
                 ComparisonType::CONTAINS_ALL,
-                ComparisonType::CONTAINS_EXACTLY => ComparisonType::CONTAINS,
+                ComparisonType::MATCHES_EXACTLY => ComparisonType::CONTAINS,
                 ComparisonType::NEQ,
                 ComparisonType::NOT_CONTAINS_ALL,
-                ComparisonType::NOT_CONTAINS_EXACTLY => ComparisonType::NOT_CONTAINS,
+                ComparisonType::NOT_MATCHES_EXACTLY => ComparisonType::NOT_CONTAINS,
                 default => $comparison,
             };
         }
@@ -244,10 +244,10 @@ class ChoiceFilterType extends AbstractType
         return match ($comparison) {
             ComparisonType::CONTAINS,
             ComparisonType::CONTAINS_ALL,
-            ComparisonType::CONTAINS_EXACTLY => ComparisonType::EQ,
+            ComparisonType::MATCHES_EXACTLY => ComparisonType::EQ,
             ComparisonType::NOT_CONTAINS,
             ComparisonType::NOT_CONTAINS_ALL,
-            ComparisonType::NOT_CONTAINS_EXACTLY => ComparisonType::NEQ,
+            ComparisonType::NOT_MATCHES_EXACTLY => ComparisonType::NEQ,
             default => $comparison,
         };
     }
