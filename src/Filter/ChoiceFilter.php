@@ -383,7 +383,7 @@ final class ChoiceFilter implements FilterInterface
             return false;
         }
 
-        return 'simple_array' === strtolower($type);
+        return \in_array(strtolower($type), ['json', 'json_array', 'jsonb', 'simple_array', 'array'], true);
     }
 
     /**

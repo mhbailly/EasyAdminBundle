@@ -146,6 +146,31 @@ class ChoiceFilterTest extends TestCase
         self::assertSame(['east'], $parameters[0]->getValue());
     }
 
+    public function testContainsAnyOfMatchesExactValuesInJson(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'A' => 'A',
+            'A_other' => 'A_other',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS,
+                'value' => ['A'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(1, $parameters);
+        self::assertSame('%"A"%', $parameters[0]->getValue());
+    }
+
     private function createConfiguredQueryBuilder(): QueryBuilder
     {
         $entityManager = $this->createEntityManager();
