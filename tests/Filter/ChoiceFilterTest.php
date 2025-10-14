@@ -31,6 +31,11 @@ class ChoiceFilterTest extends TestCase
             'type' => 'json',
         ]);
         $metadata->mapField([
+            'fieldName' => 'bar',
+            'columnName' => 'bar',
+            'type' => 'string',
+        ]);
+        $metadata->mapField([
             'fieldName' => 'tags',
             'columnName' => 'tags',
             'type' => 'simple_array',
@@ -126,7 +131,7 @@ class ChoiceFilterTest extends TestCase
     public function testContainsOneOfWithScalarStorageFallsBackToInComparison(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
-        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+        $filter = ChoiceFilter::new('bar')->canSelectMultiple()->setChoices([
             'east' => 'east',
             'west' => 'west',
         ]);
@@ -142,7 +147,7 @@ class ChoiceFilterTest extends TestCase
 
         $filter->apply($queryBuilder, $filterData, null, $this->entityDto);
 
-        self::assertSame('SELECT o FROM Object o WHERE o.foo IN (:foo_0)', $queryBuilder->getDQL());
+        self::assertSame('SELECT o FROM Object o WHERE o.bar IN (:bar_0)', $queryBuilder->getDQL());
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(1, $parameters);
         self::assertSame(['east'], $parameters[0]->getValue());
