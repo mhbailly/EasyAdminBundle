@@ -86,6 +86,8 @@ return [
         'label.contains' => 'obsahuje',
         'label.contains_one_of' => 'contains one of',
         'label.contains_all' => 'obsahuje všechny',
+        'label.contains_exactly' => 'contains exactly',
+        'label.does_not_contain_all_of' => 'does not contain all of',
         'label.does_not_contain_any_of' => 'does not contain any of',
         'label.not_contains' => 'neobsahuje',
         'label.starts_with' => 'začíná na',

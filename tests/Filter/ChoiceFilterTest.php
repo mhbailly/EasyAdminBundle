@@ -40,7 +40,11 @@ class ChoiceFilterTest extends TestCase
     public function testContainsOneOfWithJsonStorage(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
-        $filter = ChoiceFilter::new('foo')->canSelectMultiple();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
         $filterData = FilterDataDto::new(
             0,
             $filter->getAsDto(),
@@ -64,7 +68,11 @@ class ChoiceFilterTest extends TestCase
     public function testContainsAllWithSimpleArrayStorage(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
-        $filter = ChoiceFilter::new('foo')->canSelectMultiple();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'north' => 'north',
+            'south' => 'south',
+            'east' => 'east',
+        ]);
         $filterData = FilterDataDto::new(
             0,
             $filter->getAsDto(),
@@ -88,7 +96,11 @@ class ChoiceFilterTest extends TestCase
     public function testDoesNotContainAnyWithJsonStorage(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
-        $filter = ChoiceFilter::new('foo')->canSelectMultiple();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'silver' => 'silver',
+            'gold' => 'gold',
+            'platinum' => 'platinum',
+        ]);
         $filterData = FilterDataDto::new(
             0,
             $filter->getAsDto(),
@@ -112,7 +124,10 @@ class ChoiceFilterTest extends TestCase
     public function testContainsOneOfWithScalarStorageFallsBackToInComparison(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
-        $filter = ChoiceFilter::new('foo')->canSelectMultiple();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'east' => 'east',
+            'west' => 'west',
+        ]);
         $filterData = FilterDataDto::new(
             0,
             $filter->getAsDto(),
@@ -143,7 +158,10 @@ class ChoiceFilterTest extends TestCase
     public function testEntityMetadataFallbackDetectsArrayStorage(): void
     {
         $queryBuilder = $this->createConfiguredQueryBuilder();
-        $filter = ChoiceFilter::new('tags')->canSelectMultiple();
+        $filter = ChoiceFilter::new('tags')->canSelectMultiple()->setChoices([
+            'alpha' => 'alpha',
+            'beta' => 'beta',
+        ]);
         $filterData = FilterDataDto::new(
             0,
             $filter->getAsDto(),
@@ -160,6 +178,63 @@ class ChoiceFilterTest extends TestCase
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(1, $parameters);
         self::assertSame('%"alpha"%', $parameters[0]->getValue());
+    }
+
+    public function testContainsExactlyMatchesOnlySelectedValues(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS_EXACTLY,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 AND o.foo LIKE :foo_0_1 AND o.foo NOT LIKE :foo_0_exact_excl_0', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(3, $parameters);
+        self::assertSame('%red%', $parameters[0]->getValue());
+        self::assertSame('%green%', $parameters[1]->getValue());
+        self::assertSame('%blue%', $parameters[2]->getValue());
+    }
+
+    public function testDoesNotContainAllExcludesRecordsContainingAllSelectedValues(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::NOT_CONTAINS_ALL,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.foo NOT LIKE :foo_0_notall_0 OR o.foo NOT LIKE :foo_0_notall_1 OR o.foo IS NULL', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(2, $parameters);
+        self::assertSame('%red%', $parameters[0]->getValue());
+        self::assertSame('%green%', $parameters[1]->getValue());
     }
 
     private function createEntityManager(): EntityManagerInterface

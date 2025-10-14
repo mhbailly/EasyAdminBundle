@@ -157,6 +157,41 @@ class ChoiceFilterTypeTest extends FilterTypeTest
             'SELECT o FROM Object o WHERE o.foo NOT IN (:foo_1) OR o.foo IS NULL',
             [new Parameter('foo_1', ['a'], Connection::PARAM_STR_ARRAY)],
         ];
+
+        yield [
+            ['comparison' => ComparisonType::CONTAINS_EXACTLY, 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::CONTAINS_EXACTLY, 'value' => ['a', 'b']],
+            [
+                'field_stores_multiple' => true,
+                'value_type_options' => [
+                    'multiple' => true,
+                    'choices' => ['a', 'b', 'c'],
+                ],
+            ],
+            'SELECT o FROM Object o WHERE o.foo LIKE :foo_1_0 AND o.foo LIKE :foo_1_1 AND o.foo NOT LIKE :foo_1_exact_excl_0',
+            [
+                new Parameter('foo_1_0', '%a%'),
+                new Parameter('foo_1_1', '%b%'),
+                new Parameter('foo_1_exact_excl_0', '%c%'),
+            ],
+        ];
+
+        yield [
+            ['comparison' => ComparisonType::NOT_CONTAINS_ALL, 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::NOT_CONTAINS_ALL, 'value' => ['a', 'b']],
+            [
+                'field_stores_multiple' => true,
+                'value_type_options' => [
+                    'multiple' => true,
+                    'choices' => ['a', 'b', 'c'],
+                ],
+            ],
+            'SELECT o FROM Object o WHERE o.foo NOT LIKE :foo_1_notall_0 OR o.foo NOT LIKE :foo_1_notall_1 OR o.foo IS NULL',
+            [
+                new Parameter('foo_1_notall_0', '%a%'),
+                new Parameter('foo_1_notall_1', '%b%'),
+            ],
+        ];
     }
 
     public function testScalarFieldMultipleSelectionProvidesPartialComparisons(): void
@@ -172,6 +207,8 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $this->assertArrayHasKey('filter.label.contains_one_of', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
+        $this->assertArrayNotHasKey('filter.label.contains_exactly', $choices);
+        $this->assertArrayNotHasKey('filter.label.does_not_contain_all_of', $choices);
         $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
     }
@@ -190,10 +227,34 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $this->assertArrayHasKey('filter.label.contains_one_of', $choices);
         $this->assertArrayHasKey('filter.label.contains_all', $choices);
+        $this->assertArrayHasKey('filter.label.contains_exactly', $choices);
+        $this->assertArrayHasKey('filter.label.does_not_contain_all_of', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
         $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
         $this->assertSame(ComparisonType::CONTAINS_ALL, $choices['filter.label.contains_all']);
+        $this->assertSame(ComparisonType::CONTAINS_EXACTLY, $choices['filter.label.contains_exactly']);
+        $this->assertSame(ComparisonType::NOT_CONTAINS_ALL, $choices['filter.label.does_not_contain_all_of']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
+    }
+
+    public function testArrayFieldSingleSelectionProvidesContainsComparisons(): void
+    {
+        $form = $this->factory->create(ChoiceFilterType::class, null, [
+            'field_stores_multiple' => true,
+            'value_type_options' => [
+                'multiple' => false,
+                'choices' => ['a', 'b'],
+            ],
+        ]);
+
+        $choices = $form->get('comparison')->getConfig()->getOption('choices');
+
+        $this->assertArrayHasKey('filter.label.contains', $choices);
+        $this->assertArrayHasKey('filter.label.not_contains', $choices);
+        $this->assertArrayNotHasKey('filter.label.contains_exactly', $choices);
+        $this->assertArrayNotHasKey('filter.label.does_not_contain_all_of', $choices);
+        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains']);
+        $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.not_contains']);
     }
 
     public function testLegacyEqualityNormalizesToContainsForArrayFields(): void

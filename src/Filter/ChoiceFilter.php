@@ -82,6 +82,10 @@ final class ChoiceFilter implements FilterInterface
             ? (bool) $configuredStoresMultiple
             : $this->storesArrayValues($fieldDto, $entityDto, $property);
         $wrapWithQuotes = $storesArray && $this->needsQuotedSearchPattern($fieldDto, $entityDto, $property);
+        $allChoices = $filterDataDto->getFormTypeOption('value_type_options.choices');
+        if (!\is_array($allChoices)) {
+            $allChoices = [];
+        }
 
         if (null === $value || ($isMultiple && \is_array($value) && 0 === \count($value))) {
             $queryBuilder->andWhere(sprintf('%s.%s %s', $alias, $property, $comparison));
@@ -90,7 +94,7 @@ final class ChoiceFilter implements FilterInterface
         }
 
         if ($storesArray) {
-            $this->applyForArrayStorage($queryBuilder, $alias, $property, $comparison, $parameterName, $value, $wrapWithQuotes);
+            $this->applyForArrayStorage($queryBuilder, $alias, $property, $comparison, $parameterName, $value, $wrapWithQuotes, $allChoices);
 
             return;
         }
@@ -108,9 +112,9 @@ final class ChoiceFilter implements FilterInterface
             $value = array_values($value);
         }
 
-        if (\in_array($comparison, [ComparisonType::CONTAINS, ComparisonType::CONTAINS_ALL], true)) {
+        if (\in_array($comparison, [ComparisonType::CONTAINS, ComparisonType::CONTAINS_ALL, ComparisonType::CONTAINS_EXACTLY], true)) {
             $comparison = \is_array($value) ? 'IN' : '=';
-        } elseif (ComparisonType::NOT_CONTAINS === $comparison) {
+        } elseif (\in_array($comparison, [ComparisonType::NOT_CONTAINS, ComparisonType::NOT_CONTAINS_ALL], true)) {
             $comparison = \is_array($value) ? 'NOT IN' : '!=';
         }
 
@@ -125,7 +129,7 @@ final class ChoiceFilter implements FilterInterface
             ->setParameter($parameterName, $value);
     }
 
-    private function applyForArrayStorage(QueryBuilder $queryBuilder, string $alias, string $property, string $comparison, string $parameterName, mixed $value, bool $wrapWithQuotes): void
+    private function applyForArrayStorage(QueryBuilder $queryBuilder, string $alias, string $property, string $comparison, string $parameterName, mixed $value, bool $wrapWithQuotes, array $allChoices): void
     {
         if ($value instanceof \Traversable) {
             $value = iterator_to_array($value, false);
@@ -141,6 +145,18 @@ final class ChoiceFilter implements FilterInterface
 
         if (ComparisonType::CONTAINS_ALL === $comparison) {
             $this->applyContainsAllComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
+
+            return;
+        }
+
+        if (ComparisonType::CONTAINS_EXACTLY === $comparison) {
+            $this->applyContainsExactlyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes, $allChoices);
+
+            return;
+        }
+
+        if (ComparisonType::NOT_CONTAINS_ALL === $comparison) {
+            $this->applyNotContainsAllComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
 
             return;
         }
@@ -193,6 +209,29 @@ final class ChoiceFilter implements FilterInterface
     /**
      * @param array<mixed> $values
      */
+    private function applyNotContainsAllComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $values, bool $wrapWithQuotes): void
+    {
+        if (0 === \count($values)) {
+            $queryBuilder->andWhere(sprintf('%s.%s IS NULL', $alias, $property));
+
+            return;
+        }
+
+        $orX = new Orx();
+        foreach ($values as $index => $item) {
+            $itemParameterName = sprintf('%s_notall_%s', $parameterName, $index);
+            $orX->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
+
+        $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $values
+     */
     private function applyContainsAnyComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $values, bool $wrapWithQuotes): void
     {
         $orX = new Orx();
@@ -204,6 +243,39 @@ final class ChoiceFilter implements FilterInterface
         }
 
         $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $selectedValues
+     * @param array<mixed> $allChoices
+     */
+    private function applyContainsExactlyComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $selectedValues, bool $wrapWithQuotes, array $allChoices): void
+    {
+        if (0 === \count($selectedValues)) {
+            $queryBuilder->andWhere(sprintf('%s.%s IS NULL', $alias, $property));
+
+            return;
+        }
+
+        $andX = new Andx();
+
+        foreach ($selectedValues as $index => $item) {
+            $itemParameterName = sprintf('%s_%s', $parameterName, $index);
+            $andX->add(sprintf('%s.%s LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $choiceValues = $this->extractChoiceValues($allChoices);
+        if (0 < \count($choiceValues)) {
+            $remainingValues = array_values(array_diff($choiceValues, $selectedValues));
+            foreach ($remainingValues as $index => $item) {
+                $itemParameterName = sprintf('%s_exact_excl_%s', $parameterName, $index);
+                $andX->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+                $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+            }
+        }
+
+        $queryBuilder->andWhere($andX);
     }
 
     private function createLikePattern(mixed $value, bool $wrapWithQuotes): string
@@ -266,5 +338,27 @@ final class ChoiceFilter implements FilterInterface
         }
 
         return 'simple_array' === strtolower($type);
+    }
+
+    /**
+     * @param array<mixed> $choices
+     *
+     * @return array<mixed>
+     */
+    private function extractChoiceValues(array $choices): array
+    {
+        $values = [];
+
+        foreach ($choices as $choice) {
+            if (\is_array($choice)) {
+                $values = array_merge($values, $this->extractChoiceValues($choice));
+
+                continue;
+            }
+
+            $values[] = $choice;
+        }
+
+        return array_values(array_unique($values, SORT_REGULAR));
     }
 }
