@@ -237,6 +237,35 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('%green%', $parameters[1]->getValue());
     }
 
+    public function testDoesNotContainExactlyExcludesExactMatches(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::NOT_CONTAINS_EXACTLY,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE (o.foo NOT LIKE :foo_0_exact_not_0 AND o.foo NOT LIKE :foo_0_exact_not_1) OR o.foo LIKE :foo_0_exact_extra_0 OR o.foo IS NULL', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(3, $parameters);
+        self::assertSame('%red%', $parameters[0]->getValue());
+        self::assertSame('%green%', $parameters[1]->getValue());
+        self::assertSame('%blue%', $parameters[2]->getValue());
+    }
+
     private function createEntityManager(): EntityManagerInterface
     {
         $configuration = Setup::createConfiguration(true);

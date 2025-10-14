@@ -86,6 +86,7 @@ return [
         'label.contains' => '包含',
         'label.contains_any_of' => 'contains any of',
         'label.does_not_contain_all_of' => 'does not contain all of',
+        'label.does_not_contain_exactly' => 'does not contain exactly',
         'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => '包含所有',
         'label.contains_exactly' => 'contains exactly',

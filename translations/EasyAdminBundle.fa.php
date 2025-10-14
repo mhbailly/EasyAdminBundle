@@ -88,6 +88,7 @@ return [
         'label.contains_all' => 'شامل همه',
         'label.contains_exactly' => 'contains exactly',
         'label.does_not_contain_all_of' => 'does not contain all of',
+        'label.does_not_contain_exactly' => 'does not contain exactly',
         'label.does_not_contain_any_of' => 'does not contain any of',
         'label.not_contains' => 'شامل نمی‌شود',
         'label.starts_with' => 'شروع می‌شود با',

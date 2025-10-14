@@ -86,6 +86,7 @@ return [
         // 'label.contains' => '',
         // 'label.contains_any_of' => '',
         // 'label.does_not_contain_all_of' => '',
+        // 'label.does_not_contain_exactly' => '',
         // 'label.does_not_contain_any_of' => '',
         // 'label.contains_all' => '',
         // 'label.contains_exactly' => '',

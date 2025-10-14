@@ -114,7 +114,7 @@ final class ChoiceFilter implements FilterInterface
 
         if (\in_array($comparison, [ComparisonType::CONTAINS, ComparisonType::CONTAINS_ALL, ComparisonType::CONTAINS_EXACTLY], true)) {
             $comparison = \is_array($value) ? 'IN' : '=';
-        } elseif (\in_array($comparison, [ComparisonType::NOT_CONTAINS, ComparisonType::NOT_CONTAINS_ALL], true)) {
+        } elseif (\in_array($comparison, [ComparisonType::NOT_CONTAINS, ComparisonType::NOT_CONTAINS_ALL, ComparisonType::NOT_CONTAINS_EXACTLY], true)) {
             $comparison = \is_array($value) ? 'NOT IN' : '!=';
         }
 
@@ -157,6 +157,12 @@ final class ChoiceFilter implements FilterInterface
 
         if (ComparisonType::NOT_CONTAINS_ALL === $comparison) {
             $this->applyNotContainsAllComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
+
+            return;
+        }
+
+        if (ComparisonType::NOT_CONTAINS_EXACTLY === $comparison) {
+            $this->applyNotContainsExactlyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes, $allChoices);
 
             return;
         }
@@ -222,6 +228,46 @@ final class ChoiceFilter implements FilterInterface
             $itemParameterName = sprintf('%s_notall_%s', $parameterName, $index);
             $orX->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
             $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
+
+        $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $selectedValues
+     * @param array<mixed> $allChoices
+     */
+    private function applyNotContainsExactlyComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $selectedValues, bool $wrapWithQuotes, array $allChoices): void
+    {
+        if (0 === \count($selectedValues)) {
+            // any non-null value violates exact empty selection
+            $queryBuilder->andWhere(sprintf('%s.%s IS NOT NULL', $alias, $property));
+
+            return;
+        }
+
+        $orX = new Orx();
+
+        $missingAnd = new Andx();
+        foreach ($selectedValues as $index => $item) {
+            $itemParameterName = sprintf('%s_exact_not_%s', $parameterName, $index);
+            $missingAnd->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+        if ($missingAnd->count() > 0) {
+            $orX->add($missingAnd);
+        }
+
+        $choiceValues = $this->extractChoiceValues($allChoices);
+        if (0 < \count($choiceValues)) {
+            $extraValues = array_values(array_diff($choiceValues, $selectedValues));
+            foreach ($extraValues as $index => $item) {
+                $itemParameterName = sprintf('%s_exact_extra_%s', $parameterName, $index);
+                $orX->add(sprintf('%s.%s LIKE :%s', $alias, $property, $itemParameterName));
+                $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+            }
         }
 
         $orX->add(sprintf('%s.%s IS NULL', $alias, $property));

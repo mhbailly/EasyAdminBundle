@@ -88,6 +88,7 @@ return [
         'label.contains_all' => 'dauka guztiak',
         'label.contains_exactly' => 'contains exactly',
         'label.does_not_contain_all_of' => 'does not contain all of',
+        'label.does_not_contain_exactly' => 'does not contain exactly',
         'label.does_not_contain_any_of' => 'does not contain any of',
         'label.not_contains' => 'ez dauka',
         'label.starts_with' => 'honela hasten da',

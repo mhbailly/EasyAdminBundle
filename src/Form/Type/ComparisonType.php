@@ -24,6 +24,7 @@ class ComparisonType extends AbstractType
     public const CONTAINS_EXACTLY = 'like_exactly';
     public const NOT_CONTAINS = 'not like';
     public const NOT_CONTAINS_ALL = 'not like_all';
+    public const NOT_CONTAINS_EXACTLY = 'not like_exactly';
     public const STARTS_WITH = 'like*';
     public const ENDS_WITH = '*like';
 
