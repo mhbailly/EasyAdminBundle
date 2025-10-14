@@ -77,8 +77,11 @@ final class ChoiceFilter implements FilterInterface
         $parameterName = $filterDataDto->getParameterName();
         $value = $filterDataDto->getValue();
         $isMultiple = (bool) $filterDataDto->getFormTypeOption('value_type_options.multiple');
-        $storesArray = $this->storesArrayValues($fieldDto, $entityDto, $property);
-        $wrapWithQuotes = $storesArray && $this->needsQuotedSearchPattern($fieldDto);
+        $configuredStoresMultiple = $filterDataDto->getFormTypeOption('field_stores_multiple');
+        $storesArray = null !== $configuredStoresMultiple
+            ? (bool) $configuredStoresMultiple
+            : $this->storesArrayValues($fieldDto, $entityDto, $property);
+        $wrapWithQuotes = $storesArray && $this->needsQuotedSearchPattern($fieldDto, $entityDto, $property);
 
         if (null === $value || ($isMultiple && \is_array($value) && 0 === \count($value))) {
             $queryBuilder->andWhere(sprintf('%s.%s %s', $alias, $property, $comparison));
@@ -242,13 +245,21 @@ final class ChoiceFilter implements FilterInterface
         return \in_array($normalizedType, ['json', 'json_array', 'jsonb', 'simple_array', 'array'], true);
     }
 
-    private function needsQuotedSearchPattern(?FieldDto $fieldDto): bool
+    private function needsQuotedSearchPattern(?FieldDto $fieldDto, EntityDto $entityDto, string $property): bool
     {
-        if (null === $fieldDto) {
-            return false;
+        $type = null;
+
+        if (null !== $fieldDto) {
+            $type = $fieldDto->getDoctrineMetadata()->get('type');
         }
 
-        $type = $fieldDto->getDoctrineMetadata()->get('type');
+        if (null === $type && $entityDto->hasProperty($property)) {
+            try {
+                $type = $entityDto->getPropertyMetadata($property)->get('type');
+            } catch (\Throwable) {
+                $type = null;
+            }
+        }
 
         if (!\is_string($type)) {
             return false;

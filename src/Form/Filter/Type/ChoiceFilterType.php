@@ -18,6 +18,7 @@ class ChoiceFilterType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $multiple = (bool) $builder->get('value')->getOption('multiple');
+        $fieldStoresMultiple = (bool) $options['field_stores_multiple'];
 
         // if the filter shows the values as checkboxes or radio buttons, remove the
         // attribute that turns the <select> into an autocomplete widget
@@ -27,9 +28,10 @@ class ChoiceFilterType extends AbstractType
 
         $builder->addModelTransformer(new CallbackTransformer(
             static fn ($data) => $data,
-            static function ($data) use ($multiple) {
+            static function ($data) use ($multiple, $fieldStoresMultiple) {
                 // symfony form will cut off invalid values, so make sure no warnings will be thrown out:
                 $data['value'] ??= null;
+                $data['comparison'] = self::normalizeComparison($data['comparison'], $multiple, $fieldStoresMultiple);
 
                 switch ($data['comparison']) {
                     case ComparisonType::EQ:
@@ -98,6 +100,7 @@ class ChoiceFilterType extends AbstractType
                     'data-ea-widget' => 'ea-autocomplete',
                 ],
             ],
+            'field_stores_multiple' => false,
         ]);
         $resolver->setNormalizer('value_type_options', static function (Options $options, $value) {
             if (!isset($value['attr'])) {
@@ -109,23 +112,102 @@ class ChoiceFilterType extends AbstractType
         $resolver->setNormalizer('comparison_type_options', static function (Options $options, $value) {
             $value['type'] ??= 'choice';
 
-            $isMultiple = (bool) ($options['value_type_options']['multiple'] ?? false);
-            if ($isMultiple && !isset($value['choices'])) {
-                $value['choices'] = [
-                    'filter.label.is_same' => ComparisonType::EQ,
-                    'filter.label.is_not_same' => ComparisonType::NEQ,
-                    'filter.label.contains_one_of' => ComparisonType::CONTAINS,
-                    'filter.label.contains_all' => ComparisonType::CONTAINS_ALL,
-                    'filter.label.does_not_contain_any_of' => ComparisonType::NOT_CONTAINS,
-                ];
+            if (isset($value['choices'])) {
+                return $value;
             }
+
+            $filterIsMultiple = (bool) ($options['value_type_options']['multiple'] ?? false);
+            $fieldStoresMultiple = (bool) $options['field_stores_multiple'];
+
+            $value['choices'] = self::resolveAvailableComparisons($filterIsMultiple, $fieldStoresMultiple);
 
             return $value;
         });
+        $resolver->setAllowedTypes('field_stores_multiple', 'bool');
     }
 
     public function getParent(): string
     {
         return ComparisonFilterType::class;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function resolveAvailableComparisons(bool $filterIsMultiple, bool $fieldStoresMultiple): array
+    {
+        if ($filterIsMultiple && $fieldStoresMultiple) {
+            return [
+                'filter.label.contains_one_of' => ComparisonType::CONTAINS,
+                'filter.label.contains_all' => ComparisonType::CONTAINS_ALL,
+                'filter.label.does_not_contain_any_of' => ComparisonType::NOT_CONTAINS,
+            ];
+        }
+
+        if ($filterIsMultiple) {
+            return [
+                'filter.label.contains_one_of' => ComparisonType::CONTAINS,
+                'filter.label.does_not_contain_any_of' => ComparisonType::NOT_CONTAINS,
+            ];
+        }
+
+        if ($fieldStoresMultiple) {
+            return [
+                'filter.label.contains' => ComparisonType::CONTAINS,
+                'filter.label.not_contains' => ComparisonType::NOT_CONTAINS,
+            ];
+        }
+
+        return [
+            'filter.label.is_same' => ComparisonType::EQ,
+            'filter.label.is_not_same' => ComparisonType::NEQ,
+        ];
+    }
+
+    private static function normalizeComparison(string $comparison, bool $filterIsMultiple, bool $fieldStoresMultiple): string
+    {
+        if (\in_array($comparison, ['IN', '='], true)) {
+            $comparison = ComparisonType::EQ;
+        } elseif (\in_array($comparison, ['NOT IN', '!='], true)) {
+            $comparison = ComparisonType::NEQ;
+        }
+
+        if ($filterIsMultiple && $fieldStoresMultiple) {
+            if (ComparisonType::EQ === $comparison) {
+                return ComparisonType::CONTAINS;
+            }
+
+            if (ComparisonType::NEQ === $comparison) {
+                return ComparisonType::NOT_CONTAINS;
+            }
+
+            return $comparison;
+        }
+
+        if ($filterIsMultiple && !$fieldStoresMultiple) {
+            if (ComparisonType::EQ === $comparison) {
+                return ComparisonType::CONTAINS;
+            }
+
+            if (ComparisonType::NEQ === $comparison) {
+                return ComparisonType::NOT_CONTAINS;
+            }
+
+            return $comparison;
+        }
+
+        if (!$filterIsMultiple && $fieldStoresMultiple) {
+            if (ComparisonType::EQ === $comparison) {
+                return ComparisonType::CONTAINS;
+            }
+
+            if (ComparisonType::NEQ === $comparison) {
+                return ComparisonType::NOT_CONTAINS;
+            }
+
+            return $comparison;
+        }
+
+        return $comparison;
     }
 }

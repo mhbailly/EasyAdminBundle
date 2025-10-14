@@ -14,7 +14,7 @@ class ChoiceFilterTypeTest extends FilterTypeTest
     /**
      * @dataProvider getDataProvider
      */
-    public function testSubmitAndFilter($submittedData, $data, array $options, string $dql, array $params)
+    public function testSubmitAndFilter($submittedData, $data, array $options, string $dql, array $params, ?array $metadata = null)
     {
         $form = $this->factory->create(static::FILTER_TYPE, null, $options);
         $form->submit($submittedData);
@@ -24,7 +24,7 @@ class ChoiceFilterTypeTest extends FilterTypeTest
         $this->assertTrue($form->isSynchronized());
 
         $filter = $this->filterRegistry->resolveType($form);
-        $filter->filter($this->qb, $form, ['field' => 'foo']);
+        $filter->filter($this->qb, $form, $metadata ?? ['field' => 'foo']);
         $this->assertSame(static::FILTER_TYPE, $filter::class);
         $this->assertSame($dql, $this->qb->getDQL());
         $this->assertSameDoctrineParams($params, $this->qb->getParameters()->toArray());
@@ -108,7 +108,7 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         yield [
             ['comparison' => ComparisonType::EQ, 'value' => ['a', 'b']],
-            ['comparison' => 'IN', 'value' => ['a', 'b']],
+            ['comparison' => ComparisonType::CONTAINS, 'value' => ['a', 'b']],
             [
                 'value_type_options' => [
                     'multiple' => true,
@@ -121,14 +121,14 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         yield [
             ['comparison' => ComparisonType::NEQ, 'value' => ['b', 'c']],
-            ['comparison' => 'NOT IN', 'value' => ['b', 'c']],
+            ['comparison' => ComparisonType::NOT_CONTAINS, 'value' => ['b', 'c']],
             [
                 'value_type_options' => [
                     'multiple' => true,
                     'choices' => ['a', 'b', 'c'],
                 ],
             ],
-            'SELECT o FROM Object o WHERE o.foo NOT IN (:foo_1)',
+            'SELECT o FROM Object o WHERE o.foo NOT IN (:foo_1) OR o.foo IS NULL',
             [new Parameter('foo_1', ['b', 'c'], Connection::PARAM_STR_ARRAY)],
         ];
 
@@ -159,7 +159,7 @@ class ChoiceFilterTypeTest extends FilterTypeTest
         ];
     }
 
-    public function testMultipleSelectionProvidesArrayComparisons(): void
+    public function testScalarFieldMultipleSelectionProvidesPartialComparisons(): void
     {
         $form = $this->factory->create(ChoiceFilterType::class, null, [
             'value_type_options' => [
@@ -174,5 +174,42 @@ class ChoiceFilterTypeTest extends FilterTypeTest
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
         $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
+    }
+
+    public function testArrayFieldMultipleSelectionProvidesAllComparisons(): void
+    {
+        $form = $this->factory->create(ChoiceFilterType::class, null, [
+            'field_stores_multiple' => true,
+            'value_type_options' => [
+                'multiple' => true,
+                'choices' => ['a', 'b'],
+            ],
+        ]);
+
+        $choices = $form->get('comparison')->getConfig()->getOption('choices');
+
+        $this->assertArrayHasKey('filter.label.contains_one_of', $choices);
+        $this->assertArrayHasKey('filter.label.contains_all', $choices);
+        $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
+        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
+        $this->assertSame(ComparisonType::CONTAINS_ALL, $choices['filter.label.contains_all']);
+        $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
+    }
+
+    public function testLegacyEqualityNormalizesToContainsForArrayFields(): void
+    {
+        $form = $this->factory->create(ChoiceFilterType::class, null, [
+            'field_stores_multiple' => true,
+            'value_type_options' => [
+                'multiple' => true,
+                'choices' => ['a', 'b'],
+            ],
+        ]);
+
+        $form->submit(['comparison' => ComparisonType::EQ, 'value' => ['a']]);
+
+        $data = $form->getData();
+        $this->assertSame(ComparisonType::CONTAINS, $data['comparison']);
+        $this->assertSame(['a'], $data['value']);
     }
 }
