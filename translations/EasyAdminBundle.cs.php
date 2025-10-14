@@ -84,7 +84,7 @@ return [
         'label.is_less_than_or_equal_to' => 'je menší než nebo rovno',
         'label.is_between' => 'je mezi',
         'label.contains' => 'obsahuje',
-        'label.contains_one_of' => 'contains one of',
+        'label.contains_any_of' => 'contains any of',
         'label.contains_all' => 'obsahuje všechny',
         'label.contains_exactly' => 'contains exactly',
         'label.does_not_contain_all_of' => 'does not contain all of',

@@ -84,7 +84,7 @@ return [
         'label.is_less_than_or_equal_to' => 'txikiagoa edo berdina da',
         'label.is_between' => 'tartean dago',
         'label.contains' => 'dauka',
-        'label.contains_one_of' => 'contains one of',
+        'label.contains_any_of' => 'contains any of',
         'label.contains_all' => 'dauka guztiak',
         'label.contains_exactly' => 'contains exactly',
         'label.does_not_contain_all_of' => 'does not contain all of',

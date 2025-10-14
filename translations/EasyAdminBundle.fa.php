@@ -84,7 +84,7 @@ return [
         'label.is_less_than_or_equal_to' => 'کوچکتر یا مساوی با',
         'label.is_between' => 'در بین',
         'label.contains' => 'شامل',
-        'label.contains_one_of' => 'contains one of',
+        'label.contains_any_of' => 'contains any of',
         'label.contains_all' => 'شامل همه',
         'label.contains_exactly' => 'contains exactly',
         'label.does_not_contain_all_of' => 'does not contain all of',

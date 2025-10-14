@@ -84,7 +84,7 @@ return [
         'label.is_less_than_or_equal_to' => 'е помало или еднакво со',
         'label.is_between' => 'е помеѓу',
         'label.contains' => 'содржи',
-        'label.contains_one_of' => 'contains one of',
+        'label.contains_any_of' => 'contains any of',
         'label.does_not_contain_all_of' => 'does not contain all of',
         'label.does_not_contain_any_of' => 'does not contain any of',
         'label.contains_all' => 'содржи сè',

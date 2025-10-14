@@ -168,11 +168,11 @@ class ChoiceFilterTypeTest extends FilterTypeTest
                     'choices' => ['a', 'b', 'c'],
                 ],
             ],
-            'SELECT o FROM Object o WHERE o.foo LIKE :foo_1_0 AND o.foo LIKE :foo_1_1 AND o.foo NOT LIKE :foo_1_exact_excl_0',
+            'SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 AND o.foo LIKE :foo_0_1 AND o.foo NOT LIKE :foo_0_exact_excl_0',
             [
-                new Parameter('foo_1_0', '%a%'),
-                new Parameter('foo_1_1', '%b%'),
-                new Parameter('foo_1_exact_excl_0', '%c%'),
+                new Parameter('foo_0_0', '%a%'),
+                new Parameter('foo_0_1', '%b%'),
+                new Parameter('foo_0_exact_excl_0', '%c%'),
             ],
         ];
 
@@ -186,10 +186,10 @@ class ChoiceFilterTypeTest extends FilterTypeTest
                     'choices' => ['a', 'b', 'c'],
                 ],
             ],
-            'SELECT o FROM Object o WHERE o.foo NOT LIKE :foo_1_notall_0 OR o.foo NOT LIKE :foo_1_notall_1 OR o.foo IS NULL',
+            'SELECT o FROM Object o WHERE o.foo NOT LIKE :foo_0_notall_0 OR o.foo NOT LIKE :foo_0_notall_1 OR o.foo IS NULL',
             [
-                new Parameter('foo_1_notall_0', '%a%'),
-                new Parameter('foo_1_notall_1', '%b%'),
+                new Parameter('foo_0_notall_0', '%a%'),
+                new Parameter('foo_0_notall_1', '%b%'),
             ],
         ];
     }
@@ -205,11 +205,11 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $choices = $form->get('comparison')->getConfig()->getOption('choices');
 
-        $this->assertArrayHasKey('filter.label.contains_one_of', $choices);
+        $this->assertArrayHasKey('filter.label.contains_any_of', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
         $this->assertArrayNotHasKey('filter.label.contains_exactly', $choices);
         $this->assertArrayNotHasKey('filter.label.does_not_contain_all_of', $choices);
-        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
+        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_any_of']);
         $this->assertSame(ComparisonType::NOT_CONTAINS, $choices['filter.label.does_not_contain_any_of']);
     }
 
@@ -225,12 +225,12 @@ class ChoiceFilterTypeTest extends FilterTypeTest
 
         $choices = $form->get('comparison')->getConfig()->getOption('choices');
 
-        $this->assertArrayHasKey('filter.label.contains_one_of', $choices);
+        $this->assertArrayHasKey('filter.label.contains_any_of', $choices);
         $this->assertArrayHasKey('filter.label.contains_all', $choices);
         $this->assertArrayHasKey('filter.label.contains_exactly', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_all_of', $choices);
         $this->assertArrayHasKey('filter.label.does_not_contain_any_of', $choices);
-        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_one_of']);
+        $this->assertSame(ComparisonType::CONTAINS, $choices['filter.label.contains_any_of']);
         $this->assertSame(ComparisonType::CONTAINS_ALL, $choices['filter.label.contains_all']);
         $this->assertSame(ComparisonType::CONTAINS_EXACTLY, $choices['filter.label.contains_exactly']);
         $this->assertSame(ComparisonType::NOT_CONTAINS_ALL, $choices['filter.label.does_not_contain_all_of']);

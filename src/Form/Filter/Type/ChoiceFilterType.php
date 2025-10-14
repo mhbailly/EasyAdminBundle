@@ -160,7 +160,7 @@ class ChoiceFilterType extends AbstractType
     {
         if ($filterIsMultiple && $fieldStoresMultiple) {
             return [
-                'filter.label.contains_one_of' => ComparisonType::CONTAINS,
+                'filter.label.contains_any_of' => ComparisonType::CONTAINS,
                 'filter.label.contains_all' => ComparisonType::CONTAINS_ALL,
                 'filter.label.contains_exactly' => ComparisonType::CONTAINS_EXACTLY,
                 'filter.label.does_not_contain_all_of' => ComparisonType::NOT_CONTAINS_ALL,
@@ -170,7 +170,7 @@ class ChoiceFilterType extends AbstractType
 
         if ($filterIsMultiple) {
             return [
-                'filter.label.contains_one_of' => ComparisonType::CONTAINS,
+                'filter.label.contains_any_of' => ComparisonType::CONTAINS,
                 'filter.label.does_not_contain_any_of' => ComparisonType::NOT_CONTAINS,
             ];
         }

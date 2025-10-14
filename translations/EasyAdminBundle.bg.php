@@ -84,7 +84,7 @@ return [
         'label.is_less_than_or_equal_to' => 'е по-малко или равно на',
         'label.is_between' => 'е между',
         'label.contains' => 'съдържа',
-        'label.contains_one_of' => 'contains one of',
+        'label.contains_any_of' => 'contains any of',
         'label.contains_all' => 'съдържа всички',
         'label.contains_exactly' => 'contains exactly',
         'label.does_not_contain_all_of' => 'does not contain all of',
