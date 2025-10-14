@@ -63,8 +63,8 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 OR o.foo LIKE :foo_0_1', $queryBuilder->getDQL());
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(2, $parameters);
-        self::assertSame('%red%', $parameters[0]->getValue());
-        self::assertSame('%green%', $parameters[1]->getValue());
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
     }
 
     public function testContainsAllWithSimpleArrayStorage(): void
@@ -119,8 +119,8 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('SELECT o FROM Object o WHERE (o.foo NOT LIKE :foo_0_0 AND o.foo NOT LIKE :foo_0_1) OR o.foo IS NULL', $queryBuilder->getDQL());
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(2, $parameters);
-        self::assertSame('%silver%', $parameters[0]->getValue());
-        self::assertSame('%gold%', $parameters[1]->getValue());
+        self::assertSame('%"silver"%', $parameters[0]->getValue());
+        self::assertSame('%"gold"%', $parameters[1]->getValue());
     }
 
     public function testContainsOneOfWithScalarStorageFallsBackToInComparison(): void
@@ -231,9 +231,9 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 AND o.foo LIKE :foo_0_1 AND o.foo NOT LIKE :foo_0_exact_excl_0', $queryBuilder->getDQL());
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(3, $parameters);
-        self::assertSame('%red%', $parameters[0]->getValue());
-        self::assertSame('%green%', $parameters[1]->getValue());
-        self::assertSame('%blue%', $parameters[2]->getValue());
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
+        self::assertSame('%"blue"%', $parameters[2]->getValue());
     }
 
     public function testDoesNotContainAllExcludesRecordsContainingAllSelectedValues(): void
@@ -260,8 +260,8 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('SELECT o FROM Object o WHERE o.foo NOT LIKE :foo_0_notall_0 OR o.foo NOT LIKE :foo_0_notall_1 OR o.foo IS NULL', $queryBuilder->getDQL());
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(2, $parameters);
-        self::assertSame('%red%', $parameters[0]->getValue());
-        self::assertSame('%green%', $parameters[1]->getValue());
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
     }
 
     public function testDoesNotMatchExactlyExcludesExactMatches(): void
@@ -288,9 +288,9 @@ class ChoiceFilterTest extends TestCase
         self::assertSame('SELECT o FROM Object o WHERE (o.foo NOT LIKE :foo_0_exact_not_0 AND o.foo NOT LIKE :foo_0_exact_not_1) OR o.foo LIKE :foo_0_exact_extra_0 OR o.foo IS NULL', $queryBuilder->getDQL());
         $parameters = $queryBuilder->getParameters()->toArray();
         self::assertCount(3, $parameters);
-        self::assertSame('%red%', $parameters[0]->getValue());
-        self::assertSame('%green%', $parameters[1]->getValue());
-        self::assertSame('%blue%', $parameters[2]->getValue());
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
+        self::assertSame('%"blue"%', $parameters[2]->getValue());
     }
 
     private function createEntityManager(): EntityManagerInterface
