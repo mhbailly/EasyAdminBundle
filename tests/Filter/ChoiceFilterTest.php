@@ -1,0 +1,332 @@
+<?php
+
+namespace EasyCorp\Bundle\EasyAdminBundle\Tests\Filter;
+
+use Doctrine\DBAL\DriverManager;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\ORMSetup;
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\ORM\Tools\Setup;
+use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\FieldDto;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\FilterDataDto;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Form\Type\ComparisonType;
+use PHPUnit\Framework\TestCase;
+
+class ChoiceFilterTest extends TestCase
+{
+    private EntityDto $entityDto;
+
+    protected function setUp(): void
+    {
+        $metadata = new ClassMetadata(self::class);
+        $metadata->setIdentifier(['id']);
+        $metadata->mapField([
+            'fieldName' => 'foo',
+            'columnName' => 'foo',
+            'type' => 'json',
+        ]);
+        $metadata->mapField([
+            'fieldName' => 'bar',
+            'columnName' => 'bar',
+            'type' => 'string',
+        ]);
+        $metadata->mapField([
+            'fieldName' => 'tags',
+            'columnName' => 'tags',
+            'type' => 'simple_array',
+        ]);
+
+        $this->entityDto = new EntityDto(self::class, $metadata);
+    }
+
+    public function testContainsOneOfWithJsonStorage(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 OR o.foo LIKE :foo_0_1', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(2, $parameters);
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
+    }
+
+    public function testContainsAllWithSimpleArrayStorage(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'north' => 'north',
+            'south' => 'south',
+            'east' => 'east',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS_ALL,
+                'value' => ['north', 'south'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'simple_array');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 AND o.foo LIKE :foo_0_1', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(2, $parameters);
+        self::assertSame('%"north"%', $parameters[0]->getValue());
+        self::assertSame('%"south"%', $parameters[1]->getValue());
+    }
+
+    public function testDoesNotContainAnyWithJsonStorage(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'silver' => 'silver',
+            'gold' => 'gold',
+            'platinum' => 'platinum',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::NOT_CONTAINS,
+                'value' => ['silver', 'gold'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE (o.foo NOT LIKE :foo_0_0 AND o.foo NOT LIKE :foo_0_1) OR o.foo IS NULL', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(2, $parameters);
+        self::assertSame('%"silver"%', $parameters[0]->getValue());
+        self::assertSame('%"gold"%', $parameters[1]->getValue());
+    }
+
+    public function testContainsOneOfWithScalarStorageFallsBackToInComparison(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('bar')->canSelectMultiple()->setChoices([
+            'east' => 'east',
+            'west' => 'west',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS,
+                'value' => ['east'],
+            ],
+        );
+
+        $filter->apply($queryBuilder, $filterData, null, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.bar IN (:bar_0)', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(1, $parameters);
+        self::assertSame(['east'], $parameters[0]->getValue());
+    }
+
+    public function testContainsAnyOfMatchesExactValuesInJson(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'A' => 'A',
+            'A_other' => 'A_other',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS,
+                'value' => ['A'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(1, $parameters);
+        self::assertSame('%"A"%', $parameters[0]->getValue());
+    }
+
+    private function createConfiguredQueryBuilder(): QueryBuilder
+    {
+        $entityManager = $this->createEntityManager();
+        $queryBuilder = new QueryBuilder($entityManager);
+        $queryBuilder->select('o')->from('Object', 'o');
+
+        return $queryBuilder;
+    }
+
+    public function testEntityMetadataFallbackDetectsArrayStorage(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('tags')->canSelectMultiple()->setChoices([
+            'alpha' => 'alpha',
+            'beta' => 'beta',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::CONTAINS,
+                'value' => ['alpha'],
+            ],
+        );
+
+        $filter->apply($queryBuilder, $filterData, null, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.tags LIKE :tags_0_0', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(1, $parameters);
+        self::assertSame('%"alpha"%', $parameters[0]->getValue());
+    }
+
+    public function testMatchesExactlyIncludesOnlySelectedValues(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::MATCHES_EXACTLY,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.foo LIKE :foo_0_0 AND o.foo LIKE :foo_0_1 AND o.foo NOT LIKE :foo_0_exact_excl_0', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(3, $parameters);
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
+        self::assertSame('%"blue"%', $parameters[2]->getValue());
+    }
+
+    public function testDoesNotContainAllExcludesRecordsContainingAllSelectedValues(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::NOT_CONTAINS_ALL,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE o.foo NOT LIKE :foo_0_notall_0 OR o.foo NOT LIKE :foo_0_notall_1 OR o.foo IS NULL', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(2, $parameters);
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
+    }
+
+    public function testDoesNotMatchExactlyExcludesExactMatches(): void
+    {
+        $queryBuilder = $this->createConfiguredQueryBuilder();
+        $filter = ChoiceFilter::new('foo')->canSelectMultiple()->setChoices([
+            'red' => 'red',
+            'green' => 'green',
+            'blue' => 'blue',
+        ]);
+        $filterData = FilterDataDto::new(
+            0,
+            $filter->getAsDto(),
+            'o',
+            [
+                'comparison' => ComparisonType::NOT_MATCHES_EXACTLY,
+                'value' => ['red', 'green'],
+            ],
+        );
+        $fieldDto = $this->createFieldDto('foo', 'json');
+
+        $filter->apply($queryBuilder, $filterData, $fieldDto, $this->entityDto);
+
+        self::assertSame('SELECT o FROM Object o WHERE (o.foo NOT LIKE :foo_0_exact_not_0 AND o.foo NOT LIKE :foo_0_exact_not_1) OR o.foo LIKE :foo_0_exact_extra_0 OR o.foo IS NULL', $queryBuilder->getDQL());
+        $parameters = $queryBuilder->getParameters()->toArray();
+        self::assertCount(3, $parameters);
+        self::assertSame('%"red"%', $parameters[0]->getValue());
+        self::assertSame('%"green"%', $parameters[1]->getValue());
+        self::assertSame('%"blue"%', $parameters[2]->getValue());
+    }
+
+    private function createEntityManager(): EntityManagerInterface
+    {
+        if (class_exists(ORMSetup::class)) {
+            $configuration = ORMSetup::createConfiguration(true, null);
+        } else {
+            $configuration = Setup::createConfiguration(true, null, null);
+        }
+        $configuration->setMetadataDriverImpl(new MappingDriverChain());
+
+        $connectionParams = [
+            'driver' => 'pdo_sqlite',
+            'memory' => true,
+        ];
+
+        if (method_exists(EntityManager::class, 'create')) {
+            return EntityManager::create($connectionParams, $configuration);
+        }
+
+        $connection = DriverManager::getConnection($connectionParams, $configuration);
+
+        return new EntityManager($connection, $configuration);
+    }
+
+    private function createFieldDto(string $propertyName, string $doctrineType): FieldDto
+    {
+        $fieldDto = new FieldDto();
+        $fieldDto->setProperty($propertyName);
+        $fieldDto->setDoctrineMetadata(['type' => $doctrineType]);
+
+        return $fieldDto;
+    }
+}

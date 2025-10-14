@@ -2,6 +2,7 @@
 
 namespace EasyCorp\Bundle\EasyAdminBundle\Filter;
 
+use Doctrine\ORM\Query\Expr\Andx;
 use Doctrine\ORM\Query\Expr\Orx;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Contracts\Filter\FilterInterface;
@@ -76,17 +77,337 @@ final class ChoiceFilter implements FilterInterface
         $parameterName = $filterDataDto->getParameterName();
         $value = $filterDataDto->getValue();
         $isMultiple = (bool) $filterDataDto->getFormTypeOption('value_type_options.multiple');
-
-        if (null === $value || ($isMultiple && 0 === \count($value))) {
-            $queryBuilder->andWhere(sprintf('%s.%s %s', $alias, $property, $comparison));
-        } else {
-            $orX = new Orx();
-            $orX->add(sprintf('%s.%s %s (:%s)', $alias, $property, $comparison, $parameterName));
-            if (ComparisonType::NEQ === $comparison || 'NOT IN' === $comparison) {
-                $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
-            }
-            $queryBuilder->andWhere($orX)
-                ->setParameter($parameterName, $value);
+        $configuredStoresMultiple = $filterDataDto->getFormTypeOption('field_stores_multiple');
+        $storesArray = null !== $configuredStoresMultiple
+            ? (bool) $configuredStoresMultiple
+            : $this->storesArrayValues($fieldDto, $entityDto, $property);
+        $wrapWithQuotes = $storesArray && $this->needsQuotedSearchPattern($fieldDto, $entityDto, $property);
+        $allChoices = $filterDataDto->getFormTypeOption('value_type_options.choices');
+        if (!\is_array($allChoices)) {
+            $allChoices = [];
         }
+
+        if (null === $value || ($isMultiple && \is_array($value) && 0 === \count($value))) {
+            $queryBuilder->andWhere(sprintf('%s.%s %s', $alias, $property, $comparison));
+
+            return;
+        }
+
+        if ($storesArray) {
+            $this->applyForArrayStorage($queryBuilder, $alias, $property, $comparison, $parameterName, $value, $wrapWithQuotes, $allChoices);
+
+            return;
+        }
+
+        $this->applyForScalarStorage($queryBuilder, $alias, $property, $comparison, $parameterName, $value);
+    }
+
+    private function applyForScalarStorage(QueryBuilder $queryBuilder, string $alias, string $property, string $comparison, string $parameterName, mixed $value): void
+    {
+        if ($value instanceof \Traversable) {
+            $value = iterator_to_array($value, false);
+        }
+
+        if (\is_array($value)) {
+            $value = array_values($value);
+        }
+
+        if (\in_array($comparison, [ComparisonType::CONTAINS, ComparisonType::CONTAINS_ALL, ComparisonType::MATCHES_EXACTLY], true)) {
+            $comparison = \is_array($value) ? 'IN' : '=';
+        } elseif (\in_array($comparison, [ComparisonType::NOT_CONTAINS, ComparisonType::NOT_CONTAINS_ALL, ComparisonType::NOT_MATCHES_EXACTLY], true)) {
+            $comparison = \is_array($value) ? 'NOT IN' : '!=';
+        }
+
+        $orX = new Orx();
+        $orX->add(sprintf('%s.%s %s (:%s)', $alias, $property, $comparison, $parameterName));
+
+        if (\in_array($comparison, [ComparisonType::NEQ, '!=', 'NOT IN'], true)) {
+            $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
+        }
+
+        $queryBuilder->andWhere($orX)
+            ->setParameter($parameterName, $value);
+    }
+
+    /**
+     * @param array<mixed> $allChoices
+     */
+    private function applyForArrayStorage(QueryBuilder $queryBuilder, string $alias, string $property, string $comparison, string $parameterName, mixed $value, bool $wrapWithQuotes, array $allChoices): void
+    {
+        if ($value instanceof \Traversable) {
+            $value = iterator_to_array($value, false);
+        }
+
+        $values = \is_array($value) ? array_values($value) : [$value];
+
+        if (\in_array($comparison, ['IN', '='], true)) {
+            $comparison = ComparisonType::CONTAINS;
+        } elseif (\in_array($comparison, ['NOT IN', '!='], true)) {
+            $comparison = ComparisonType::NOT_CONTAINS;
+        }
+
+        if (ComparisonType::CONTAINS_ALL === $comparison) {
+            $this->applyContainsAllComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
+
+            return;
+        }
+
+        if (ComparisonType::MATCHES_EXACTLY === $comparison) {
+            $this->applyContainsExactlyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes, $allChoices);
+
+            return;
+        }
+
+        if (ComparisonType::NOT_CONTAINS_ALL === $comparison) {
+            $this->applyNotContainsAllComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
+
+            return;
+        }
+
+        if (ComparisonType::NOT_MATCHES_EXACTLY === $comparison) {
+            $this->applyNotContainsExactlyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes, $allChoices);
+
+            return;
+        }
+
+        if (ComparisonType::NOT_CONTAINS === $comparison) {
+            $this->applyNotContainsComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
+
+            return;
+        }
+
+        $this->applyContainsAnyComparison($queryBuilder, $alias, $property, $parameterName, $values, $wrapWithQuotes);
+    }
+
+    /**
+     * @param array<mixed> $values
+     */
+    private function applyContainsAllComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $values, bool $wrapWithQuotes): void
+    {
+        $andX = new Andx();
+
+        foreach ($values as $index => $item) {
+            $itemParameterName = sprintf('%s_%s', $parameterName, $index);
+            $andX->add(sprintf('%s.%s LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $queryBuilder->andWhere($andX);
+    }
+
+    /**
+     * @param array<mixed> $values
+     */
+    private function applyNotContainsComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $values, bool $wrapWithQuotes): void
+    {
+        $andX = new Andx();
+
+        foreach ($values as $index => $item) {
+            $itemParameterName = sprintf('%s_%s', $parameterName, $index);
+            $andX->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $orX = new Orx();
+        $orX->add($andX);
+        $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
+
+        $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $values
+     */
+    private function applyNotContainsAllComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $values, bool $wrapWithQuotes): void
+    {
+        if (0 === \count($values)) {
+            $queryBuilder->andWhere(sprintf('%s.%s IS NULL', $alias, $property));
+
+            return;
+        }
+
+        $orX = new Orx();
+        foreach ($values as $index => $item) {
+            $itemParameterName = sprintf('%s_notall_%s', $parameterName, $index);
+            $orX->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
+
+        $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $selectedValues
+     * @param array<mixed> $allChoices
+     */
+    private function applyNotContainsExactlyComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $selectedValues, bool $wrapWithQuotes, array $allChoices): void
+    {
+        if (0 === \count($selectedValues)) {
+            // any non-null value violates exact empty selection
+            $queryBuilder->andWhere(sprintf('%s.%s IS NOT NULL', $alias, $property));
+
+            return;
+        }
+
+        $orX = new Orx();
+
+        $missingAnd = new Andx();
+        foreach ($selectedValues as $index => $item) {
+            $itemParameterName = sprintf('%s_exact_not_%s', $parameterName, $index);
+            $missingAnd->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+        if ($missingAnd->count() > 0) {
+            $orX->add($missingAnd);
+        }
+
+        $choiceValues = $this->extractChoiceValues($allChoices);
+        if (0 < \count($choiceValues)) {
+            $extraValues = array_values(array_diff($choiceValues, $selectedValues));
+            foreach ($extraValues as $index => $item) {
+                $itemParameterName = sprintf('%s_exact_extra_%s', $parameterName, $index);
+                $orX->add(sprintf('%s.%s LIKE :%s', $alias, $property, $itemParameterName));
+                $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+            }
+        }
+
+        $orX->add(sprintf('%s.%s IS NULL', $alias, $property));
+
+        $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $values
+     */
+    private function applyContainsAnyComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $values, bool $wrapWithQuotes): void
+    {
+        $orX = new Orx();
+
+        foreach ($values as $index => $item) {
+            $itemParameterName = sprintf('%s_%s', $parameterName, $index);
+            $orX->add(sprintf('%s.%s LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $queryBuilder->andWhere($orX);
+    }
+
+    /**
+     * @param array<mixed> $selectedValues
+     * @param array<mixed> $allChoices
+     */
+    private function applyContainsExactlyComparison(QueryBuilder $queryBuilder, string $alias, string $property, string $parameterName, array $selectedValues, bool $wrapWithQuotes, array $allChoices): void
+    {
+        if (0 === \count($selectedValues)) {
+            $queryBuilder->andWhere(sprintf('%s.%s IS NULL', $alias, $property));
+
+            return;
+        }
+
+        $andX = new Andx();
+
+        foreach ($selectedValues as $index => $item) {
+            $itemParameterName = sprintf('%s_%s', $parameterName, $index);
+            $andX->add(sprintf('%s.%s LIKE :%s', $alias, $property, $itemParameterName));
+            $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+        }
+
+        $choiceValues = $this->extractChoiceValues($allChoices);
+        if (0 < \count($choiceValues)) {
+            $remainingValues = array_values(array_diff($choiceValues, $selectedValues));
+            foreach ($remainingValues as $index => $item) {
+                $itemParameterName = sprintf('%s_exact_excl_%s', $parameterName, $index);
+                $andX->add(sprintf('%s.%s NOT LIKE :%s', $alias, $property, $itemParameterName));
+                $queryBuilder->setParameter($itemParameterName, $this->createLikePattern($item, $wrapWithQuotes));
+            }
+        }
+
+        $queryBuilder->andWhere($andX);
+    }
+
+    private function createLikePattern(mixed $value, bool $wrapWithQuotes): string
+    {
+        $needle = (string) $value;
+
+        if ($wrapWithQuotes) {
+            return '%"'.$needle.'"%';
+        }
+
+        return '%'.$needle.'%';
+    }
+
+    /**
+     * @internal the Doctrine metadata of the FieldDto is not always populated; fall back to entity metadata when possible
+     */
+    private function storesArrayValues(?FieldDto $fieldDto, EntityDto $entityDto, string $property): bool
+    {
+        $type = null;
+
+        if (null !== $fieldDto) {
+            $type = $fieldDto->getDoctrineMetadata()->get('type');
+        }
+
+        if (null === $type && $entityDto->hasProperty($property)) {
+            try {
+                $type = $entityDto->getPropertyMetadata($property)->get('type');
+            } catch (\Throwable) {
+                $type = null;
+            }
+        }
+
+        if (!\is_string($type)) {
+            return false;
+        }
+
+        $normalizedType = strtolower($type);
+
+        return \in_array($normalizedType, ['json', 'json_array', 'jsonb', 'simple_array', 'array'], true);
+    }
+
+    private function needsQuotedSearchPattern(?FieldDto $fieldDto, EntityDto $entityDto, string $property): bool
+    {
+        $type = null;
+
+        if (null !== $fieldDto) {
+            $type = $fieldDto->getDoctrineMetadata()->get('type');
+        }
+
+        if (null === $type && $entityDto->hasProperty($property)) {
+            try {
+                $type = $entityDto->getPropertyMetadata($property)->get('type');
+            } catch (\Throwable) {
+                $type = null;
+            }
+        }
+
+        if (!\is_string($type)) {
+            return false;
+        }
+
+        return \in_array(strtolower($type), ['json', 'json_array', 'jsonb', 'simple_array', 'array'], true);
+    }
+
+    /**
+     * @param array<mixed> $choices
+     *
+     * @return array<mixed>
+     */
+    private function extractChoiceValues(array $choices): array
+    {
+        $values = [];
+
+        foreach ($choices as $choice) {
+            if (\is_array($choice)) {
+                $values = array_merge($values, $this->extractChoiceValues($choice));
+
+                continue;
+            }
+
+            $values[] = $choice;
+        }
+
+        return array_values(array_unique($values, \SORT_REGULAR));
     }
 }
