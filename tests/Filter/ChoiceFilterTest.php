@@ -2,6 +2,7 @@
 
 namespace EasyCorp\Bundle\EasyAdminBundle\Tests\Filter;
 
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -301,13 +302,18 @@ class ChoiceFilterTest extends TestCase
         }
         $configuration->setMetadataDriverImpl(new MappingDriverChain());
 
-        return EntityManager::create(
-            [
-                'driver' => 'pdo_sqlite',
-                'memory' => true,
-            ],
-            $configuration,
-        );
+        $connectionParams = [
+            'driver' => 'pdo_sqlite',
+            'memory' => true,
+        ];
+
+        if (method_exists(EntityManager::class, 'create')) {
+            return EntityManager::create($connectionParams, $configuration);
+        }
+
+        $connection = DriverManager::getConnection($connectionParams, $configuration);
+
+        return new EntityManager($connection, $configuration);
     }
 
     private function createFieldDto(string $propertyName, string $doctrineType): FieldDto
